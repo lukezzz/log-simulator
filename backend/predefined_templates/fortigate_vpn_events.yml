@@ -1,0 +1,5 @@
+name: "FortiGate VPN Events"
+device_type: "FortiGate"
+description: "Standard FortiGate log template for VPN event logs, using ECS-compliant placeholders."
+content_format: >-
+  date={@timestamp.date} time={@timestamp.time} logid="{event.id}" type="event" subtype="vpn" level="notice" vd="root" eventtime={event.created} logdesc="Progress IPsec phase 1" msg="progress IPsec phase 1" action="negotiate" remip={source.ip} locip={destination.ip} remport={source.port} locport={destination.port} outintf="port14" cookies="9091f4d4837ea71c/0000000000000000" user="N/A" group="N/A" xauthuser="N/A" xauthgroup="N/A" assignip=N/A vpntunnel="test" status="success" init="local" mode="main" dir="outbound" stage=1 role="initiator" result="OK"

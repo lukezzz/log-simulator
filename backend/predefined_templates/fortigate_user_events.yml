@@ -1,0 +1,5 @@
+name: "FortiGate User Events"
+device_type: "FortiGate"
+description: "Standard FortiGate log template for user event logs, using ECS-compliant placeholders."
+content_format: >-
+  date={@timestamp.date} time={@timestamp.time} logid="{event.id}" type="event" subtype="user" level="notice" vd="root" eventtime={event.created} logdesc="Authentication success" srcip={source.ip} dstip={destination.ip} policyid={rule.id} interface="port10" user="{user.name}" group="local-group1" authproto="TELNET({source.ip})" action="authentication" status="success" reason="N/A" msg="User {user.name} succeeded in authentication"

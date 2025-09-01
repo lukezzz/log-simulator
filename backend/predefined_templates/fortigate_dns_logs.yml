@@ -1,0 +1,5 @@
+name: "FortiGate DNS Query Logs"
+device_type: "FortiGate"
+description: "Standard FortiGate log template for DNS query UTM logs, using ECS-compliant placeholders."
+content_format: >-
+  date={@timestamp.date} time={@timestamp.time} logid="{event.id}" type="utm" subtype="dns" eventtype="dns-response" level="notice" vd="vdom1" eventtime={event.created} policyid={rule.id} sessionid={network.session_id} srcip={source.ip} srcport={source.port} srcintf="port12" srcintfrole="undefined" dstip={destination.ip} dstport={destination.port} dstintf="port11" dstintfrole="undefined" proto={network.transport} profile="dnsfilter_fgd" srcmac="{source.mac}" xid={dns.id} qname="{dns.question.name}" qtype="{dns.question.type}" qtypeval=28 qclass="IN" ipaddr="{dns.resolved_ip}" msg="Domain is monitored" action="pass" cat=52 catdesc="Information Technology"

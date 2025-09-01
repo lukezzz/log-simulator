@@ -1,0 +1,5 @@
+name: "FortiGate DLP Logs"
+device_type: "FortiGate"
+description: "Standard FortiGate log template for data leak prevention logs, using ECS-compliant placeholders."
+content_format: >-
+  date={@timestamp.date} time={@timestamp.time} logid="{event.id}" type="utm" subtype="dlp" eventtype="dlp" level="warning" vd="root" eventtime={event.created} filteridx=1 dlpextra="dlp-file-size11" filtertype="file-type" filtercat="file" severity="medium" policyid={rule.id} sessionid={network.session_id} epoch=1740880646 eventid=0 srcip={source.ip} srcport={source.port} srcintf="port10" srcintfrole="lan" dstip={destination.ip} dstport={destination.port} dstintf="port9" dstintfrole="wan" proto={network.transport} service="{network.service}" filetype="{file.extension}" direction="incoming" action="block" hostname="{url.domain}" url="{url.path}" agent="{user_agent.original}" filename="{file.name}" filesize={file.size} profile="dlp-file-type-test"

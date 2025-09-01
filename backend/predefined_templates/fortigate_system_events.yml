@@ -1,0 +1,5 @@
+name: "FortiGate System Events"
+device_type: "FortiGate"
+description: "Standard FortiGate log template for system event logs, using ECS-compliant placeholders."
+content_format: >-
+  date={@timestamp.date} time={@timestamp.time} logid="{event.id}" type="event" subtype="system" level="information" vd="vdom1" eventtime={event.created} logdesc="Admin login successful" sn="{host.id}" user="{user.name}" ui="ssh({source.ip})" method="ssh" srcip={source.ip} dstip={destination.ip} action="{event.action}" status="success" reason="none" profile="super_admin" msg="Administrator {user.name} logged in successfully from ssh({source.ip})"

@@ -1,0 +1,5 @@
+name: "FortiGate Anomaly Logs"
+device_type: "FortiGate"
+description: "Standard FortiGate log template for anomaly detection logs, using ECS-compliant placeholders."
+content_format: >-
+  date={@timestamp.date} time={@timestamp.time} logid="{event.id}" type="utm" subtype="anomaly" eventtype="anomaly" level="alert" vd="vdom1" eventtime={event.created} severity="critical" srcip={source.ip} srccountry={source.geo.country_name} dstip={destination.ip} srcintf="port12" srcintfrole="undefined" sessionid=0 action="clear_session" proto={network.transport} service="{network.service}" count=1 attack="{threat.technique.name}" icmpid="0x1474" icmptype="0x08" icmpcode="0x00" attackid={threat.technique.id} policyid={rule.id} policytype="DoS-policy" ref="http://www.fortinet.com/ids/VID{threat.technique.id}" msg="anomaly: {threat.technique.name}, 51 > threshold 50" crscore=50 craction=4096 crlevel="critical"

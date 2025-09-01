@@ -1,0 +1,5 @@
+name: "FortiGate SSL Logs"
+device_type: "FortiGate"
+description: "Standard FortiGate log template for SSL UTM logs, using ECS-compliant placeholders."
+content_format: >-
+  date={@timestamp.date} time={@timestamp.time} logid="{event.id}" type="utm" subtype="ssl" eventtype="ssl-anomalies" level="warning" vd="vdom1" eventtime={event.created} policyid={rule.id} sessionid={network.session_id} service="{network.service}" srcip={source.ip} srcport={source.port} dstip={destination.ip} dstport={destination.port} srcintf="port2" srcintfrole="undefined" dstintf="port3" dstintfrole="undefined" proto={network.transport} action="blocked" msg="Server certificate blocked" reason="block-cert-invalid"

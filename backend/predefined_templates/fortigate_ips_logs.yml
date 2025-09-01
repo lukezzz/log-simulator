@@ -1,0 +1,5 @@
+name: "FortiGate IPS Logs"
+device_type: "FortiGate"
+description: "Standard FortiGate log template for intrusion prevention system logs, using ECS-compliant placeholders."
+content_format: >-
+  date={@timestamp.date} time={@timestamp.time} logid="{event.id}" type="utm" subtype="ips" eventtype="signature" level="alert" vd="root" eventtime={event.created} severity="critical" srcip={source.ip} srccountry={source.geo.country_name} dstip={destination.ip} srcintf="port10" srcintfrole="lan" dstintf="port9" dstintfrole="wan" sessionid={network.session_id} action="dropped" proto={network.transport} service="{network.service}" policyid={rule.id} attack="{threat.technique.name}" srcport={source.port} dstport={destination.port} hostname="{url.domain}" url="{url.path}" direction="incoming" attackid={threat.technique.id} profile="block-critical-ips" ref="http://www.fortinet.com/ids/VID{threat.technique.id}" incidentserialno={event.sequence} msg="applications3: {threat.technique.name}," crscore=50 craction=4096 crlevel="critical"

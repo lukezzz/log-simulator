@@ -1,0 +1,5 @@
+name: "FortiGate Router Events"
+device_type: "FortiGate"
+description: "Standard FortiGate log template for router event logs, using ECS-compliant placeholders."
+content_format: >-
+  date={@timestamp.date} time={@timestamp.time} logid="{event.id}" type="event" subtype="router" level="warning" vd="root" eventtime={event.created} logdesc="Routing log" msg="OSPF: RECV[Hello]: From {source.ip} via port9:{destination.ip}: Invalid Area ID 0.0.0.0"

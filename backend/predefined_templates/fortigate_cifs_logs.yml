@@ -1,0 +1,5 @@
+name: "FortiGate CIFS Logs"
+device_type: "FortiGate"
+description: "Standard FortiGate log template for CIFS UTM logs, using ECS-compliant placeholders."
+content_format: >-
+  date={@timestamp.date} time={@timestamp.time} logid="{event.id}" type="utm" subtype="cifs" eventtype="cifs-filefilter" level="warning" vd="vdom1" eventtime={event.created} msg="File was blocked by file filter." direction="incoming" action="blocked" service="CIFS" srcip={source.ip} dstip={destination.ip} srcport={source.port} dstport={destination.port} srcintf="port21" srcintfrole="undefined" dstintf="port23" dstintfrole="undefined" policyid={rule.id} proto={network.transport} profile="cifs" filesize="{file.size}" filename="{file.path}" filtername="1" filetype="{file.extension}"

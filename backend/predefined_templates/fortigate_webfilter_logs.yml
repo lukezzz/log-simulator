@@ -1,0 +1,5 @@
+name: "FortiGate Web Filter Logs"
+device_type: "FortiGate"
+description: "Standard FortiGate log template for web filter UTM logs, using ECS-compliant placeholders."
+content_format: >-
+  date={@timestamp.date} time={@timestamp.time} logid="{event.id}" type="utm" subtype="webfilter" eventtype="ftgd_blk" level="warning" vd="vdom1" eventtime={event.created} policyid={rule.id} sessionid={network.session_id} srcip={source.ip} srcport={source.port} srcintf="port12" srcintfrole="undefined" dstip={destination.ip} dstport={destination.port} dstintf="port11" dstintfrole="undefined" proto={network.transport} service="{network.service}" hostname="{url.domain}" profile="test-webfilter" action="blocked" reqtype="direct" url="{url.path}" sentbyte={source.bytes} rcvdbyte={destination.bytes} direction="outgoing" msg="URL belongs to a denied category in policy" method="domain" cat=26 catdesc="Malicious Websites" crscore=30 craction=4194304 crlevel="high"

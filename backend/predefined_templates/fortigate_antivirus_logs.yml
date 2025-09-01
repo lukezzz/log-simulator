@@ -1,0 +1,5 @@
+name: "FortiGate Antivirus Logs"
+device_type: "FortiGate"
+description: "Standard FortiGate log template for antivirus UTM logs, using ECS-compliant placeholders."
+content_format: >-
+  date={@timestamp.date} time={@timestamp.time} logid="{event.id}" type="utm" subtype="virus" eventtype="infected" level="warning" vd="vdom1" eventtime={event.created} msg="File is infected." action="blocked" service="{network.service}" sessionid={network.session_id} srcip={source.ip} dstip={destination.ip} srcport={source.port} dstport={destination.port} srcintf="port12" srcintfrole="undefined" dstintf="port11" dstintfrole="undefined" policyid={rule.id} proto={network.transport} direction="incoming" filename="{file.name}" quarskip="File-was-not-quarantined." virus="{threat.software.name}" dtype="Virus" ref="http://www.fortinet.com/ve?vn={threat.software.name}" virusid={threat.software.id} url="{url.original}" profile="g-default" agent="{user_agent.original}" analyticscksum="{file.hash.sha256}" analyticssubmit="false" crscore=50 craction=2 crlevel="critical"

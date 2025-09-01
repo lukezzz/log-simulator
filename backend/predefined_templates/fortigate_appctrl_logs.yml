@@ -1,0 +1,5 @@
+name: "FortiGate Application Control Logs"
+device_type: "FortiGate"
+description: "Standard FortiGate log template for application control UTM logs, using ECS-compliant placeholders."
+content_format: >-
+  date={@timestamp.date} time={@timestamp.time} logid="{event.id}" type="utm" subtype="app-ctrl" eventtype="app-ctrl-all" level="information" vd="root" eventtime={event.created} appid={service.id} srcip={source.ip} dstip={destination.ip} srcport={source.port} dstport={destination.port} srcintf="port10" srcintfrole="lan" dstintf="port9" dstintfrole="wan" proto={network.transport} service="{network.service}" direction="outgoing" policyid={rule.id} sessionid={network.session_id} applist="block-social.media" appcat="{service.type}" app="{service.name}" action="{event.action}" hostname="{url.domain}" incidentserialno={event.sequence} url="{url.path}" msg="{service.type}: {service.name}," apprisk="medium" scertcname="{tls.server.certificate}" scertissuer="{tls.server.issuer}"

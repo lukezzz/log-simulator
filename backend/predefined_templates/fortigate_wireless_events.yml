@@ -1,0 +1,5 @@
+name: "FortiGate Wireless Events"
+device_type: "FortiGate"
+description: "Standard FortiGate log template for wireless event logs, using ECS-compliant placeholders."
+content_format: >-
+  date={@timestamp.date} time={@timestamp.time} logid="{event.id}" type="event" subtype="wireless" level="warning" vd="vdom1" eventtime={event.created} logdesc="Fake AP on air" ssid="fortinet" bssid="90:6c:ac:89:e1:fa" aptype=0 rate=130 radioband="802.11n" channel=6 action="fake-ap-on-air" manuf="Fortinet, Inc." security="WPA2 Personal" encryption="AES" signal=-93 noise=-95 live=353938 age=505 onwire="no" detectionmethod="N/A" stamac="N/A" apscan="N/A" sndetected="N/A" radioiddetected=0 stacount=0 snclosest="{host.id}" radioidclosest=0 apstatus=0 msg="Fake AP On-air fortinet 90:6c:ac:89:e1:fa chan 6 live 353938 age 505"

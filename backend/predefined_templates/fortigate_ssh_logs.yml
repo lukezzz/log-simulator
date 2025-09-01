@@ -1,0 +1,5 @@
+name: "FortiGate SSH Logs"
+device_type: "FortiGate"
+description: "Standard FortiGate log template for SSH UTM logs, using ECS-compliant placeholders."
+content_format: >-
+  date={@timestamp.date} time={@timestamp.time} logid="{event.id}" type="utm" subtype="ssh" eventtype="ssh-channel" level="warning" vd="vdom1" eventtime={event.created} policyid={rule.id} sessionid={network.session_id} profile="ssh-deepscan" srcip={source.ip} srcport={source.port} dstip={destination.ip} dstport={destination.port} srcintf="port21" srcintfrole="undefined" dstintf="port23" dstintfrole="undefined" proto={network.transport} action="blocked" direction="outgoing" login="{user.name}" channeltype="shell"

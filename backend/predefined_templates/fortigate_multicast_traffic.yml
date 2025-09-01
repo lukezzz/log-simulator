@@ -1,0 +1,5 @@
+name: "FortiGate Multicast Traffic"
+device_type: "FortiGate"
+description: "Standard FortiGate log template for multicast traffic logs, using ECS-compliant placeholders."
+content_format: >-
+  date={@timestamp.date} time={@timestamp.time} logid="{event.id}" type="traffic" subtype="multicast" level="notice" vd="vdom1" eventtime={event.created} srcip={source.ip} srcport={source.port} srcintf="port25" srcintfrole="undefined" dstip={destination.ip} dstport={destination.port} dstintf="port3" dstintfrole="undefined" sessionid={network.session_id} proto={network.transport} action="{event.action}" policyid={rule.id} policytype="multicast-policy" service="{network.service}" dstcountry={destination.geo.country_name} srccountry={source.geo.country_name} trandisp="noop" duration={event.duration} sentbyte={source.bytes} rcvdbyte={destination.bytes} sentpkt={source.packets} rcvdpkt={destination.packets} appcat="unscanned"

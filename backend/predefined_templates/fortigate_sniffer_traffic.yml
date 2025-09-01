@@ -1,0 +1,5 @@
+name: "FortiGate Sniffer Traffic"
+device_type: "FortiGate"
+description: "Standard FortiGate log template for sniffer traffic logs, using ECS-compliant placeholders."
+content_format: >-
+  date={@timestamp.date} time={@timestamp.time} logid="{event.id}" type="traffic" subtype="sniffer" level="notice" vd="root" eventtime={event.created} srcip={source.ip} srcport={source.port} srcintf="port1" srcintfrole="undefined" dstip={destination.ip} dstport={destination.port} dstintf="port1" dstintfrole="undefined" sessionid={network.session_id} proto={network.transport} action="{event.action}" policyid={rule.id} policytype="sniffer" service="{network.service}" dstcountry={destination.geo.country_name} srccountry={source.geo.country_name} trandisp="snat" transip=0.0.0.0 transport=0 duration={event.duration} sentbyte={source.bytes} rcvdbyte={destination.bytes} sentpkt={source.packets} rcvdpkt={destination.packets} appcat="unscanned" utmaction="allow" countips=1 crscore=5 craction=32768 sentdelta=0 rcvddelta=0 utmref=65162-7772
