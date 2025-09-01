@@ -4,13 +4,13 @@ Database session management and dependency injection.
 from typing import Generator
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
-from core.settings import settings
+from core.settings import cfg
 
 
 # Create database engine
 engine = create_engine(
-    settings.database_url,
-    echo=settings.debug  # Log SQL queries in debug mode
+    cfg.database_url,
+    echo=cfg.debug  # Log SQL queries in debug mode
 )
 
 # Create session factory

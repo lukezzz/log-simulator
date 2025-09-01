@@ -10,11 +10,11 @@ import redis
 from models.job import Job, JobStatusEnum
 from models.log_template import LogTemplate
 from schemas.job import JobCreate, JobUpdate
-from core.settings import settings
+from core.settings import cfg
 
 
 # Redis client for sending commands to worker
-redis_client = redis.from_url(settings.redis_url, decode_responses=True)
+redis_client = redis.from_url(cfg.redis_url, decode_responses=True)
 
 
 def create_job(db: Session, job_data: JobCreate) -> Job:
