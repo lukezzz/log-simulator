@@ -3,7 +3,7 @@ Application settings and configuration.
 """
 import os
 from typing import Optional
-from pydantic import Field, field_validator
+from pydantic import Field, RedisDsn, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -50,16 +50,10 @@ class Settings(BaseSettings):
         return v
     
     # Database settings
-    database_url: str = os.getenv(
-        "DATABASE_URL", 
-        "sqlite:///./log_simulator.db"
-    )
+    APP_DB_URI : str
     
     # Redis settings
-    redis_url: str = os.getenv(
-        "REDIS_URL", 
-        "redis://localhost:6379"
-    )
+    REDIS_URI: str
     
     # Application settings
     debug: bool = os.getenv("DEBUG", "false").lower() == "true"

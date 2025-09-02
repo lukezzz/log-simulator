@@ -14,7 +14,7 @@ from core.settings import cfg
 
 
 # Redis client for sending commands to worker
-redis_client = redis.from_url(cfg.redis_url, decode_responses=True)
+redis_client = redis.from_url(cfg.REDIS_URI, decode_responses=True)
 
 
 def create_job(db: Session, job_data: JobCreate) -> Job:

@@ -11,7 +11,7 @@ def register_redis(redis_url):
 
 
 async def get_auth_redis() -> AsyncGenerator[aioredis.Redis, None]:
-    rds = register_redis(str(cfg.redis_url))
+    rds = register_redis(str(cfg.REDIS_URI))
     try:
         yield rds
     finally:
@@ -19,7 +19,7 @@ async def get_auth_redis() -> AsyncGenerator[aioredis.Redis, None]:
 
 
 async def get_redis() -> AsyncGenerator[aioredis.Redis, None]:
-    rds = register_redis(str(cfg.redis_url))
+    rds = register_redis(str(cfg.REDIS_URI))
     try:
         yield rds
     finally:

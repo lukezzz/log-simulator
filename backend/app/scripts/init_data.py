@@ -1,16 +1,50 @@
 """
 Database initialization with default data.
 """
+import argparse
 import os
+import sys
 import uuid
 import yaml
 from pathlib import Path
 from sqlalchemy.orm import Session
 from sqlalchemy import text
+
+# Add the parent directory to sys.path to import from app modules
+sys.path.append(str(Path(__file__).parent.parent))
+
+from models.base import BaseModel
 from models.log_template import LogTemplate
 from models.aaa import Role, Permission, Account
 from schemas.account import RoleNames, Permissions, PermissionRules
 from core.security import get_password_hash
+from core.db.session import engine, SessionLocal
+
+
+def create_database_tables() -> None:
+    """
+    Create all database tables.
+    """
+    print("Creating database tables...")
+    try:
+        BaseModel.metadata.create_all(bind=engine)
+        print("Database tables created successfully.")
+    except Exception as e:
+        print(f"Error creating database tables: {e}")
+        sys.exit(1)
+
+
+def drop_database_tables() -> None:
+    """
+    Drop all database tables.
+    """
+    print("Dropping database tables...")
+    try:
+        BaseModel.metadata.drop_all(bind=engine)
+        print("Database tables dropped successfully.")
+    except Exception as e:
+        print(f"Error dropping database tables: {e}")
+        sys.exit(1)
 
 
 def create_default_log_templates(db: Session) -> None:
@@ -20,25 +54,10 @@ def create_default_log_templates(db: Session) -> None:
     Args:
         db: Database session
     """
-    # Handle schema migration for existing databases
-    try:
-        # Try to add new columns if they don't exist
-        db.execute(text("ALTER TABLE log_templates ADD COLUMN IF NOT EXISTS description TEXT"))
-        db.execute(text("ALTER TABLE log_templates ADD COLUMN IF NOT EXISTS is_predefined BOOLEAN DEFAULT FALSE"))
-        
-        # Add new job columns if they don't exist
-        db.execute(text("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS start_time TIMESTAMPTZ"))
-        db.execute(text("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS end_time TIMESTAMPTZ"))
-        db.execute(text("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS send_count INTEGER"))
-        db.execute(text("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS send_interval_ms INTEGER DEFAULT 1000"))
-        
-        db.commit()
-    except Exception as e:
-        print(f"Schema migration note: {e}")
-        db.rollback()
+
     
     # Load templates from YAML files
-    templates_dir = Path(__file__).parent.parent.parent.parent / "predefined_templates"
+    templates_dir = Path(__file__).parent.parent.parent / "predefined_templates"
     
     if not templates_dir.exists():
         print(f"Predefined templates directory not found: {templates_dir}")
@@ -162,12 +181,13 @@ def create_default_roles(db: Session) -> None:
         db.rollback()
 
 
-def create_default_admin_user(db: Session) -> None:
+def create_default_admin_user(db: Session, password: str = "secret") -> None:
     """
     Create default admin user if it doesn't exist.
     
     Args:
         db: Database session
+        password: Password for the admin user
     """
     try:
         # Check if admin user already exists
@@ -192,7 +212,7 @@ def create_default_admin_user(db: Session) -> None:
                 email="admin@logsimulator.local",
                 first_name="System",
                 last_name="Administrator",
-                password_hashed=get_password_hash("secret"),
+                password_hashed=get_password_hash(password),
                 desc="Default system administrator",
                 is_blocked=False,
                 role_id=admin_role.id,
@@ -202,7 +222,7 @@ def create_default_admin_user(db: Session) -> None:
             
             db.add(admin_user)
             db.commit()
-            print("Created default admin user with password 'secret'")
+            print(f"Created default admin user with password '{password}'")
         else:
             print("Admin user already exists")
             
@@ -211,28 +231,159 @@ def create_default_admin_user(db: Session) -> None:
         db.rollback()
 
 
-def initialize_aaa_data(db: Session) -> None:
+def initialize_aaa_data(db: Session, admin_password: str = "secret") -> None:
     """
     Initialize all AAA (Authentication, Authorization, Accounting) data.
     
     Args:
         db: Database session
+        admin_password: Password for the admin user
     """
     print("Initializing AAA data...")
     create_default_permissions(db)
     create_default_roles(db)
-    create_default_admin_user(db)
+    create_default_admin_user(db, admin_password)
     print("AAA data initialization completed.")
 
 
-def init_db_data(db: Session) -> None:
+def init_db_data(db: Session, admin_password: str = "secret") -> None:
     """
     Initialize all database data.
     
     Args:
         db: Database session
+        admin_password: Password for the admin user
     """
     print("Starting database initialization...")
     create_default_log_templates(db)
-    initialize_aaa_data(db)
+    initialize_aaa_data(db, admin_password)
     print("Database initialization completed.")
+
+
+def main():
+    """
+    Main function with command line argument parsing.
+    """
+    parser = argparse.ArgumentParser(
+        description="Database initialization script for Log Simulator",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  %(prog)s --create-tables --init-data    # Create tables and initialize data
+  %(prog)s --drop-tables                  # Drop all tables
+  %(prog)s --init-data                    # Initialize data only
+  %(prog)s --create-admin                 # Create admin user only
+  %(prog)s --reset                        # Drop and recreate everything
+        """
+    )
+    
+    parser.add_argument(
+        "--create-tables",
+        action="store_true",
+        help="Create database tables"
+    )
+    
+    parser.add_argument(
+        "--drop-tables",
+        action="store_true",
+        help="Drop database tables"
+    )
+    
+    parser.add_argument(
+        "--init-data",
+        action="store_true",
+        help="Initialize database with default data"
+    )
+    
+    parser.add_argument(
+        "--init-templates",
+        action="store_true",
+        help="Initialize log templates only"
+    )
+    
+    parser.add_argument(
+        "--init-aaa",
+        action="store_true",
+        help="Initialize AAA (authentication, authorization, accounting) data only"
+    )
+    
+    parser.add_argument(
+        "--create-admin",
+        action="store_true",
+        help="Create default admin user only"
+    )
+    
+    parser.add_argument(
+        "--reset",
+        action="store_true",
+        help="Reset database (drop tables, create tables, and initialize data)"
+    )
+    
+    parser.add_argument(
+        "--admin-password",
+        type=str,
+        default="secret",
+        help="Password for the default admin user (default: secret)"
+    )
+    
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force operations without confirmation prompts"
+    )
+    
+    args = parser.parse_args()
+    
+    # If no arguments provided, show help
+    if not any([
+        args.create_tables, args.drop_tables, args.init_data,
+        args.init_templates, args.init_aaa, args.create_admin, args.reset
+    ]):
+        parser.print_help()
+        return
+    
+    # Confirmation for destructive operations
+    if args.drop_tables or args.reset:
+        if not args.force:
+            confirm = input("This will drop existing database tables. Are you sure? (y/N): ")
+            if confirm.lower() != 'y':
+                print("Operation cancelled.")
+                return
+    
+    try:
+        # Handle reset operation
+        if args.reset:
+            drop_database_tables()
+            create_database_tables()
+            with SessionLocal() as db:
+                init_db_data(db, args.admin_password)
+            return
+        
+        # Handle table operations
+        if args.drop_tables:
+            drop_database_tables()
+        
+        if args.create_tables:
+            create_database_tables()
+        
+        # Handle data initialization operations
+        with SessionLocal() as db:
+            if args.init_data:
+                init_db_data(db, args.admin_password)
+            elif args.init_templates:
+                create_default_log_templates(db)
+            elif args.init_aaa:
+                initialize_aaa_data(db, args.admin_password)
+            elif args.create_admin:
+                create_default_admin_user(db, args.admin_password)
+    
+    except KeyboardInterrupt:
+        print("\nOperation cancelled by user.")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error during database initialization: {e}")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

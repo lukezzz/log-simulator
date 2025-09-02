@@ -9,8 +9,9 @@ from core.settings import cfg
 
 # Create database engine
 engine = create_engine(
-    cfg.database_url,
-    echo=cfg.debug  # Log SQL queries in debug mode
+    cfg.APP_DB_URI,
+    echo=cfg.debug,  # Log SQL queries in debug mode
+    pool_pre_ping=True
 )
 
 # Create session factory
@@ -33,9 +34,3 @@ def get_db() -> Generator[Session, None, None]:
         yield db
     finally:
         db.close()
-
-
-def create_tables():
-    """Create all database tables."""
-    from core.db.base import Base
-    Base.metadata.create_all(bind=engine)

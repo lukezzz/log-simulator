@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from core.db.session import get_db, create_tables
-from core.db.init_data import init_db_data
+from core.db.session import get_db
+# from app.scripts.init_data import init_db_data
 from api import jobs, log_templates, tools
 
 db = get_db().__next__()
@@ -10,8 +10,9 @@ db = get_db().__next__()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialize database tables on startup."""
-    create_tables()
-    init_db_data(db)
+    # create_tables()
+    # init_db_data(db)
+    pass
 
     yield
     db.close()

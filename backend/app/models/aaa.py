@@ -1,7 +1,7 @@
 from typing import Optional
 from sqlalchemy import Boolean, Column, DateTime, String, ForeignKey, Table
 from sqlalchemy.orm import relationship, Mapped
-from core.db.base import BaseModel
+from .base import BaseModel
 from core.security import get_password_hash
 from sqlalchemy.ext.mutable import MutableList
 

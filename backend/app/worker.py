@@ -364,7 +364,7 @@ async def main():
     logger.info("Starting log simulator worker...")
     
     # Connect to Redis
-    redis_client = redis.from_url(settings.redis_url, decode_responses=True)
+    redis_client = redis.from_url(settings.REDIS_URI, decode_responses=True)
     
     try:
         # Test Redis connection

@@ -2,10 +2,14 @@
 Job model for managing log sending jobs.
 """
 import enum
-from sqlalchemy import Column, String, Integer, Enum, ForeignKey, DateTime
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
-from core.db.base import BaseModel
+from typing import Optional, TYPE_CHECKING
+from datetime import datetime
+from sqlalchemy import String, Integer, Enum, ForeignKey, DateTime
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from .base import BaseModel
+
+if TYPE_CHECKING:
+    from .log_template import LogTemplate
 
 
 class ProtocolEnum(str, enum.Enum):
@@ -33,74 +37,66 @@ class Job(BaseModel):
     __tablename__ = "jobs"
     
     # Reference to the log template to use
-    template_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("log_templates.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-        comment="Foreign key to log template"
-    )
-    
+    template_id: Mapped[str] = mapped_column(String(64), ForeignKey("log_templates.id"))
+
     # Network protocol to use
-    protocol = Column(
+    protocol: Mapped[ProtocolEnum] = mapped_column(
         Enum(ProtocolEnum),
-        nullable=False,
         comment="Network protocol (TCP or UDP)"
     )
     
     # Destination configuration
-    destination_host = Column(
+    destination_host: Mapped[str] = mapped_column(
         String(255),
-        nullable=False,
         comment="Target host IP address or hostname"
     )
     
-    destination_port = Column(
+    destination_port: Mapped[int] = mapped_column(
         Integer,
-        nullable=False,
         comment="Target port number"
     )
     
     # Job status
-    status = Column(
+    status: Mapped[JobStatusEnum] = mapped_column(
         Enum(JobStatusEnum),
-        nullable=False,
         default=JobStatusEnum.IDLE,
         index=True,
         comment="Current job status"
     )
     
     # Scheduling fields
-    start_time = Column(
+    start_time: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True),
-        nullable=True,
         comment="Scheduled start time for the job"
     )
     
-    end_time = Column(
+    end_time: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True),
-        nullable=True,
         comment="Scheduled end time for the job"
     )
     
-    send_count = Column(
+    send_count: Mapped[Optional[int]] = mapped_column(
         Integer,
-        nullable=True,
         comment="Total number of logs to send (null for unlimited)"
     )
     
-    send_interval_ms = Column(
+    send_interval_ms: Mapped[Optional[int]] = mapped_column(
         Integer,
-        nullable=True,
         default=1000,
         comment="Delay in milliseconds between each log sent"
     )
     
     # Relationship to log template
-    template = relationship(
-        "LogTemplate",
+    template: Mapped["LogTemplate"] = relationship(
         back_populates="jobs"
     )
+    
+    def __repr__(self) -> str:
+        return (
+            f"<Job(id={self.id}, template_id={self.template_id}, "
+            f"protocol={self.protocol}, destination={self.destination_host}:{self.destination_port}, "
+            f"status={self.status})>"
+        )
     
     def __repr__(self) -> str:
         return (

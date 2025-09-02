@@ -1,9 +1,13 @@
 """
 LogTemplate model for storing log templates.
 """
-from sqlalchemy import Column, String, Text, Boolean
-from sqlalchemy.orm import relationship
-from core.db.base import BaseModel
+from typing import List, Optional, TYPE_CHECKING
+from sqlalchemy import String, Text, Boolean
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from .base import BaseModel
+
+if TYPE_CHECKING:
+    from .job import Job
 
 
 class LogTemplate(BaseModel):
@@ -15,42 +19,39 @@ class LogTemplate(BaseModel):
     
     __tablename__ = "log_templates"
     
-    name = Column(
+    name: Mapped[str] = mapped_column(
         String(255), 
-        nullable=False, 
         unique=True,
         index=True,
         comment="Unique, human-readable name for the template"
     )
-    device_type = Column(
+    device_type: Mapped[str] = mapped_column(
         String(100),
-        nullable=False,
         index=True,
         comment="Device type for categorizing the template (e.g., 'FortiGate')"
     )
-    content_format = Column(
+    content_format: Mapped[str] = mapped_column(
         Text,
-        nullable=False,
         comment="The log format string for this template"
     )
-    description = Column(
+    description: Mapped[Optional[str]] = mapped_column(
         Text,
-        nullable=True,
         comment="Optional description providing more context for the template"
     )
-    is_predefined = Column(
+    is_predefined: Mapped[bool] = mapped_column(
         Boolean,
-        nullable=False,
         default=False,
         comment="Flag to distinguish between system-provided and user-custom templates"
     )
     
     # Relationship to jobs
-    jobs = relationship(
-        "Job",
+    jobs: Mapped[List["Job"]] = relationship(
         back_populates="template",
         cascade="all, delete-orphan"
     )
+    
+    def __repr__(self) -> str:
+        return f"<LogTemplate(id={self.id}, name='{self.name}', device_type='{self.device_type}')>"
     
     def __repr__(self) -> str:
         return f"<LogTemplate(id={self.id}, name='{self.name}', device_type='{self.device_type}')>"
