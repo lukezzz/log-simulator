@@ -1,0 +1,82 @@
+networks:
+  log-simulator:
+    external: true
+
+services:
+  app-redis:
+    image: redis:dev
+    hostname: app-redis
+    networks:
+      - log-simulator
+    volumes:
+      - ./app-redis:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 30s
+      retries: 50
+      start_period: 30s
+    ports:
+      - "41379:6379"
+
+  app-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: log-simulator
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./app-db:/var/lib/postgresql/data
+    networks:
+      - log-simulator
+    ports:
+      - "41223:5432"
+    env_file:
+      - .env
+
+  app-service:
+    build:
+      context: build
+      dockerfile: Dockerfile
+    hostname: app-service
+    ports:
+      - "41424:80"
+    env_file:
+      - .env
+    volumes:
+      - ../backend/:/usr/src/
+    command: uvicorn main:app --workers 1 --host=0.0.0.0 --port=80 --reload
+    # command: [ "fastapi", "dev", "--host=0.0.0.0", "--port=80" ]
+    # command: ["fastapi", "run", "--host=0.0.0.0", "--port=80"]
+    networks:
+      - log-simulator
+
+  app-worker:
+    build:
+      context: build
+      dockerfile: Dockerfile
+    hostname: app-worker
+    # ports:
+    #   - "41404:80"
+    env_file:
+      - .env
+    volumes:
+      - ../backend/:/usr/src/
+    command: ["python", "worker.py"]
+    networks:
+      - log-simulator
+
+
+  app-nginx:
+    image: nginx:dev
+    restart: unless-stopped
+    volumes:
+      - ./app-nginx-config:/etc/nginx/conf.d/
+      - ./app-nginx-logs:/var/log/nginx
+      - ../console/dist:/usr/share/nginx/web-client
+    ports:
+      - "41405:80"
+    networks:
+      - log-simulator
+
+
