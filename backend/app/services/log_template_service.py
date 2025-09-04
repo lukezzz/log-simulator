@@ -2,7 +2,6 @@
 Service layer for template management business logic.
 """
 from typing import List, Optional
-from uuid import UUID
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from fastapi import HTTPException, status
@@ -10,7 +9,7 @@ from models.log_template import LogTemplate
 from schemas.log_template import LogTemplateCreate, LogTemplateUpdate
 
 
-def create_template(db: Session, template_data: LogTemplateCreate) -> LogTemplate:
+async def create_template(db: Session, template_data: LogTemplateCreate) -> LogTemplate:
     """
     Create a new log template.
     
@@ -30,13 +29,13 @@ def create_template(db: Session, template_data: LogTemplateCreate) -> LogTemplat
     )
     
     db.add(db_template)
-    db.commit()
-    db.refresh(db_template)
+    await db.commit()
+    await db.refresh(db_template)
     
     return db_template
 
 
-def get_templates(db: Session, skip: int = 0, limit: int = 100) -> List[LogTemplate]:
+async def get_templates(db: Session, skip: int = 0, limit: int = 100) -> List[LogTemplate]:
     """
     Get all templates with pagination.
     
@@ -49,11 +48,11 @@ def get_templates(db: Session, skip: int = 0, limit: int = 100) -> List[LogTempl
         List[LogTemplate]: List of templates
     """
     statement = select(LogTemplate).offset(skip).limit(limit)
-    result = db.execute(statement)
+    result = await db.execute(statement)
     return result.scalars().all()
 
 
-def get_template_by_id(db: Session, template_id: UUID) -> Optional[LogTemplate]:
+async def get_template_by_id(db: Session, template_id: str) -> Optional[LogTemplate]:
     """
     Get a template by its ID.
     
@@ -65,11 +64,11 @@ def get_template_by_id(db: Session, template_id: UUID) -> Optional[LogTemplate]:
         LogTemplate: Template instance or None if not found
     """
     statement = select(LogTemplate).where(LogTemplate.id == template_id)
-    result = db.execute(statement)
+    result = await db.execute(statement)
     return result.scalar_one_or_none()
 
 
-def update_template(db: Session, template_id: UUID, template_data: LogTemplateUpdate) -> LogTemplate:
+async def update_template(db: Session, template_id: str, template_data: LogTemplateUpdate) -> LogTemplate:
     """
     Update an existing log template.
     
@@ -84,7 +83,7 @@ def update_template(db: Session, template_id: UUID, template_data: LogTemplateUp
     Raises:
         HTTPException: If template not found or is predefined
     """
-    db_template = get_template_by_id(db, template_id)
+    db_template = await get_template_by_id(db, template_id)
     
     if not db_template:
         raise HTTPException(
@@ -103,13 +102,13 @@ def update_template(db: Session, template_id: UUID, template_data: LogTemplateUp
     for field, value in update_data.items():
         setattr(db_template, field, value)
     
-    db.commit()
-    db.refresh(db_template)
+    await db.commit()
+    await db.refresh(db_template)
     
     return db_template
 
 
-def delete_template(db: Session, template_id: UUID) -> bool:
+async def delete_template(db: Session, template_id: str) -> bool:
     """
     Delete a log template.
     
@@ -123,7 +122,7 @@ def delete_template(db: Session, template_id: UUID) -> bool:
     Raises:
         HTTPException: If template not found or is predefined
     """
-    db_template = get_template_by_id(db, template_id)
+    db_template = await get_template_by_id(db, template_id)
     
     if not db_template:
         raise HTTPException(
@@ -137,13 +136,13 @@ def delete_template(db: Session, template_id: UUID) -> bool:
             detail="Cannot delete predefined templates"
         )
     
-    db.delete(db_template)
-    db.commit()
+    await db.delete(db_template)
+    await db.commit()
     
     return True
 
 
-def clone_template(db: Session, template_id: UUID) -> LogTemplate:
+async def clone_template(db: Session, template_id: str) -> LogTemplate:
     """
     Clone an existing log template.
     
@@ -157,7 +156,7 @@ def clone_template(db: Session, template_id: UUID) -> LogTemplate:
     Raises:
         HTTPException: If template not found
     """
-    source_template = get_template_by_id(db, template_id)
+    source_template = await get_template_by_id(db, template_id)
     
     if not source_template:
         raise HTTPException(
@@ -175,7 +174,7 @@ def clone_template(db: Session, template_id: UUID) -> LogTemplate:
     )
     
     db.add(cloned_template)
-    db.commit()
-    db.refresh(cloned_template)
+    await db.commit()
+    await db.refresh(cloned_template)
     
     return cloned_template

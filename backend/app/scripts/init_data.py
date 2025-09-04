@@ -64,7 +64,7 @@ async def create_default_log_templates(engine: AsyncEngine) -> None:
         engine: AsyncEngine
     """
 
-    async with engine.begin() as conn:
+    async with AsyncSession(engine) as session:
         # Load templates from YAML files
         templates_dir = Path(__file__).parent.parent.parent / "predefined_templates"
     
@@ -79,7 +79,11 @@ async def create_default_log_templates(engine: AsyncEngine) -> None:
                     template_data = yaml.safe_load(f)
                 
                 # Check if template with this name already exists
-                existing_template = await conn.scalars(select(LogTemplate).filter_by(name=template_data['name'])).first()
+                result = await session.execute(select(LogTemplate).where(LogTemplate.name == template_data['name']))
+                existing_template = result.scalars().first()
+                print(f"debug==== Type: {type(existing_template)}, Value: {existing_template}")
+                if existing_template:
+                    print(f"Template details - ID: {existing_template.id}, Name: {existing_template.name}, Device: {existing_template.device_type}")
 
                 if existing_template:
                     # Update existing template
@@ -97,14 +101,14 @@ async def create_default_log_templates(engine: AsyncEngine) -> None:
                         description=template_data['description'],
                         is_predefined=True
                     )
-                    conn.add(new_template)
+                    session.add(new_template)
                     print(f"Created new template: {template_data['name']}")
                 
-                await conn.commit()
+                await session.commit()
                 
             except Exception as e:
                 print(f"Error processing template file {yaml_file}: {e}")
-                await conn.rollback()
+                await session.rollback()
 
 
 async def create_default_permissions(engine: AsyncEngine) -> None:
@@ -117,9 +121,10 @@ async def create_default_permissions(engine: AsyncEngine) -> None:
     async with AsyncSession(engine) as conn:
         try:
             for permission in Permissions:
-                existing_permission = await conn.scalars(select(Permission).filter(
+                res = await conn.execute(select(Permission).where(
                     Permission.name == permission.value
-                )).first()
+                ))
+                existing_permission = await res.scalars().first()
 
                 if not existing_permission:
                     new_permission = Permission(name=permission.value)
@@ -148,9 +153,10 @@ async def create_default_roles(engine: AsyncEngine) -> None:
             await create_default_permissions(conn)
 
             for role_name in RoleNames:
-                existing_role = await conn.scalars(select(Role).filter(
+                res = await conn.execute(select(Role).where(
                     Role.name == role_name.value
-                )).first()
+                ))
+                existing_role = await res.scalars().first()
 
                 if not existing_role:
                     # Create new role
@@ -164,9 +170,10 @@ async def create_default_roles(engine: AsyncEngine) -> None:
                     
                     # Add permissions to role using direct database queries to avoid UUID issues
                     for perm_name in role_permissions:
-                        permission = await conn.scalars(select(Permission).filter(
+                        permission_res = await conn.execute(select(Permission).where(
                             Permission.name == perm_name
-                        )).first()
+                        ))
+                        permission = await permission_res.scalars().first()
                         if permission:
                             # Use direct SQL to insert into association table to handle UUID properly
                             await conn.execute(
@@ -201,15 +208,17 @@ async def create_default_admin_user(engine: AsyncEngine, password: str = "secret
     async with AsyncSession(engine) as conn:
         try:
             # Check if admin user already exists
-            existing_admin = await conn.scalars(select(Account).filter(
+            res = await conn.execute(select(Account).where(
                 Account.username == "admin"
-            )).first()
-            
+            ))
+            existing_admin = await res.scalars().first()
+
             if not existing_admin:
                 # Get admin role
-                admin_role = await conn.scalars(select(Role).filter(
+                admin_role_res = await conn.execute(select(Role).where(
                     Role.name == RoleNames.admin.value
-                )).first()
+                ))
+                admin_role = await admin_role_res.scalars().first()
 
                 if not admin_role:
                     print("Error: Admin role not found. Please ensure roles are created first.")
@@ -275,8 +284,8 @@ async def init_db_data(engine: AsyncEngine, admin_password: str = "secret") -> N
         admin_password: Password for the admin user
     """
     print("Starting database initialization...")
-    create_default_log_templates(engine)
-    initialize_aaa_data(engine, admin_password)
+    await create_default_log_templates(engine)
+    await initialize_aaa_data(engine, admin_password)
     print("Database initialization completed.")
 
 

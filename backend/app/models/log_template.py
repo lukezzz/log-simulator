@@ -47,11 +47,19 @@ class LogTemplate(BaseModel):
     # Relationship to jobs
     jobs: Mapped[List["Job"]] = relationship(
         back_populates="template",
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
+        lazy="selectin"
     )
     
     def __repr__(self) -> str:
-        return f"<LogTemplate(id={self.id}, name='{self.name}', device_type='{self.device_type}')>"
+        """Return a detailed string representation of the LogTemplate."""
+        return (
+            f"LogTemplate(id={self.id!r}, name={self.name!r}, "
+            f"device_type={self.device_type!r}, is_predefined={self.is_predefined}, "
+            f"created_at={self.created_at}, updated_at={self.updated_at})"
+        )
     
-    def __repr__(self) -> str:
-        return f"<LogTemplate(id={self.id}, name='{self.name}', device_type='{self.device_type}')>"
+    def __str__(self) -> str:
+        """Return a human-readable string representation of the LogTemplate."""
+        return f"LogTemplate '{self.name}' ({self.device_type})"
+    

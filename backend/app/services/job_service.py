@@ -85,7 +85,7 @@ def get_jobs(db: Session, skip: int = 0, limit: int = 100) -> List[Job]:
     result = db.execute(statement)
     return result.scalars().all()
 
-async def get_job_by_id(db: Session, job_id: UUID) -> Optional[Job]:
+async def get_job_by_id(db: Session, job_id: str) -> Optional[Job]:
     """
     Get a job by its ID.
     
@@ -101,13 +101,13 @@ async def get_job_by_id(db: Session, job_id: UUID) -> Optional[Job]:
     return result.scalar_one_or_none()
 
 
-async def start_job(db: Session, job_id: UUID) -> Job:
+async def start_job(db: Session, job_id: str) -> Job:
     """
     Start a job by sending a command to the worker.
     
     Args:
         db: Database session
-        job_id: Job UUID
+        job_id: Job str
         
     Returns:
         Job: Updated job instance
@@ -134,8 +134,8 @@ async def start_job(db: Session, job_id: UUID) -> Job:
         
         # Update status to indicate we've dispatched the start command
         job.status = JobStatusEnum.RUNNING
-        db.commit()
-        db.refresh(job)
+        await db.commit()
+        await db.refresh(job)
         
         print(f"[REDIS] Sent START command for job {job_id}")
         

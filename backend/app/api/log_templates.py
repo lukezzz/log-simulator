@@ -2,7 +2,6 @@
 API router for template management endpoints.
 """
 from typing import List, Optional
-from uuid import UUID
 from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.orm import Session
 from schemas.log_template import LogTemplateCreate, LogTemplateRead, LogTemplateUpdate
@@ -22,7 +21,7 @@ router = APIRouter(
 )
 
 
-@router.post("/", response_model=LogTemplateRead, status_code=status.HTTP_201_CREATED)
+@router.post("/create", response_model=LogTemplateRead, status_code=status.HTTP_201_CREATED)
 @require_permissions(Permissions.admin)
 async def create_template(
     template_data: LogTemplateCreate,
@@ -38,8 +37,7 @@ async def create_template(
     Returns:
         LogTemplateRead: Created template data
     """
-    template = log_template_service.create_template(db, template_data)
-    return LogTemplateRead.model_validate(template)
+    return await log_template_service.create_template(db, template_data)
 
 
 @router.get("/list", response_model=Page[LogTemplateRead])
@@ -75,7 +73,7 @@ async def get_templates(
 
 @router.get("/{template_id}", response_model=LogTemplateRead)
 async def get_template(
-    template_id: UUID,
+    template_id: str,
     db: DBSession
 ) -> LogTemplateRead:
     """
@@ -91,18 +89,18 @@ async def get_template(
     Raises:
         HTTPException: If template not found
     """
-    template = log_template_service.get_template_by_id(db, template_id)
+    template = await log_template_service.get_template_by_id(db, template_id)
     if not template:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Template not found"
         )
-    return LogTemplateRead.model_validate(template)
+    return template
 
 
 @router.put("/{template_id}", response_model=LogTemplateRead)
 async def update_template(
-    template_id: UUID,
+    template_id: str,
     template_data: LogTemplateUpdate,
     db: DBSession
 ) -> LogTemplateRead:
@@ -117,13 +115,12 @@ async def update_template(
     Returns:
         LogTemplateRead: Updated template data
     """
-    template = log_template_service.update_template(db, template_id, template_data)
-    return LogTemplateRead.model_validate(template)
+    return await log_template_service.update_template(db, template_id, template_data)
 
 
 @router.delete("/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_template(
-    template_id: UUID,
+    template_id: str,
     db: DBSession
 ) -> None:
     """
@@ -133,12 +130,13 @@ async def delete_template(
         template_id: Template ID
         db: Database session
     """
-    log_template_service.delete_template(db, template_id)
+    await log_template_service.delete_template(db, template_id)
+    return None
 
 
 @router.post("/{template_id}/clone", response_model=LogTemplateRead, status_code=status.HTTP_201_CREATED)
 async def clone_template(
-    template_id: UUID,
+    template_id: str,
     db: DBSession
 ) -> LogTemplateRead:
     """
@@ -151,5 +149,4 @@ async def clone_template(
     Returns:
         LogTemplateRead: Cloned template data
     """
-    cloned_template = log_template_service.clone_template(db, template_id)
-    return LogTemplateRead.model_validate(cloned_template)
+    return await log_template_service.clone_template(db, template_id)

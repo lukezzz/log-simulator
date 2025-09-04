@@ -36,7 +36,7 @@ redis_client: Optional[redis.Redis] = None
 log_generator = LogGenerator()
 
 # db
-engine = create_async_engine(cfg.APP_DB_URI, echo=True)
+engine = create_async_engine(cfg.APP_DB_URI)
 
 async def send_log_loop(job_id: str) -> None:
     """
@@ -199,6 +199,7 @@ async def _send_log_message(message: str, host: str, port: int, protocol: Protoc
     """
     try:
         logger.debug(f"Sending message via {protocol} to {host}:{port} - {message[:50]}...")
+        logger.debug(f"full message: {message}")
         if protocol == ProtocolEnum.UDP:
             await _send_udp_message(message, host, port)
         elif protocol == ProtocolEnum.TCP:

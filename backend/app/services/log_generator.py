@@ -12,7 +12,13 @@ import uuid
 from datetime import datetime
 from typing import Dict, Callable, List
 from faker import Faker
+import string
+import random
 
+
+def generate_random_string(length=10, chars=string.ascii_letters + string.digits):
+    """Generates a random string of a specified length and character set."""
+    return ''.join(random.choice(chars) for _ in range(length))
 
 class LogGenerator:
     """
@@ -59,9 +65,10 @@ class LogGenerator:
             
             # Timestamp fields
             "@timestamp.date": lambda: datetime.now().strftime('%Y-%m-%d'),
+            "@timestamp.date2": lambda: datetime.now().strftime('%Y/%m/%d'),
             "@timestamp.time": lambda: datetime.now().strftime('%H:%M:%S'),
             "@timestamp": lambda: datetime.now().isoformat(),
-            "@timestamp.high_res": lambda: str(int(time.time() * 1000000)),
+            "@timestamp.high_res": lambda: datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f%z'),
             
             # User and authentication
             "source.user.id": lambda: str(uuid.uuid4()),
@@ -145,7 +152,7 @@ class LogGenerator:
             "container.id": lambda: str(uuid.uuid4()),
             "orchestrator.namespace": lambda: self.fake.random_element(elements=("default", "kube-system", "production", "staging")),
             "orchestrator.cluster.name": lambda: self.fake.random_element(elements=("prod-cluster", "dev-cluster", "test-cluster")),
-            "kubernetes.pod.name": lambda: f"pod-{self.fake.random_string(length=8)}",
+            "kubernetes.pod.name": lambda: f"pod-{generate_random_string(length=8)}",
             
             # Legacy placeholders for backward compatibility
             "srcip": self.fake.ipv4,

@@ -55,7 +55,7 @@ async def get_jobs(
     Returns:
         List[JobRead]: List of jobs
     """
-    query = select(Job)
+    query = select(Job).order_by(Job.created_at.desc())
     return await paginate(db, query)
 
 
