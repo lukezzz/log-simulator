@@ -30,9 +30,7 @@ from fastapi.responses import JSONResponse
 import json
 from fastapi.encoders import jsonable_encoder
 
-from .settings import get_settings
-
-settings = get_settings()
+from .settings import cfg
 
 
 class HandleResponseRoute(APIRoute):
@@ -42,13 +40,13 @@ class HandleResponseRoute(APIRoute):
         async def custom_route_handler(request: Request) -> Response:
             try:
                 response: Response = await original_route_handler(request)
-                print(request.url.path)
                 # 下面url bypass response格式化处理
                 if request.url.path.endswith(
                     (
                         "export",
                         "/auth/login",
                         "/auth/samlp",
+                        "/auth/logout"
                     )
                 ) or request.url.path.startswith(
                     (
@@ -57,6 +55,11 @@ class HandleResponseRoute(APIRoute):
                 ):
                     return response
                 else:
+                    # Check if status code allows response body
+                    # Status codes like 204 (No Content), 304 (Not Modified) cannot have a body
+                    if response.status_code in (204, 304) or (100 <= response.status_code < 200):
+                        return response
+                    
                     body = json.loads(response.body)
 
                     content = {
@@ -75,7 +78,7 @@ class HandleResponseRoute(APIRoute):
                     "data": "",
                     "errorMessage": exc.errors(),
                     "traceId": "",
-                    "app": settings.app_title,
+                    "app": cfg.app_title,
                 }
                 return JSONResponse(
                     status_code=422,

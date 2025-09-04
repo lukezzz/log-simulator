@@ -33,24 +33,44 @@ class LogGenerator:
             "destination.port": lambda: str(self.fake.random_int(min=1024, max=65535)),
             "source.nat.ip": self.fake.ipv4,
             "source.nat.port": lambda: str(self.fake.random_int(min=1024, max=65535)),
+            "destination.nat.ip": self.fake.ipv4,
+            "destination.nat.port": lambda: str(self.fake.random_int(min=1024, max=65535)),
             "source.mac": self.fake.mac_address,
+            "destination.mac": self.fake.mac_address,
             "network.transport": lambda: self.fake.random_element(elements=("tcp", "udp", "icmp")),
             "network.service": lambda: self.fake.random_element(elements=("HTTP", "HTTPS", "SSH", "FTP", "DNS")),
             "network.session_id": lambda: str(self.fake.random_int(min=1000000, max=9999999)),
+            "network.application": lambda: self.fake.random_element(elements=("web-browsing", "ssl", "ssh", "ftp", "dns")),
+            "network.direction": lambda: self.fake.random_element(elements=("inbound", "outbound")),
+            "network.bytes": lambda: str(self.fake.random_int(min=64, max=1000000)),
+            "network.packets": lambda: str(self.fake.random_int(min=1, max=1000)),
+            "network.protocol": lambda: self.fake.random_element(elements=("TCP", "UDP", "ICMP")),
+            "network.type": lambda: self.fake.random_element(elements=("ipv4", "ipv6")),
             
             # Event information
             "event.created": lambda: str(int(time.time())),
             "event.id": lambda: str(self.fake.random_int(min=1, max=99999999)).zfill(10),
             "event.action": lambda: self.fake.random_element(elements=("allow", "deny", "close", "accept", "drop")),
             "event.duration": lambda: str(self.fake.random_int(min=1, max=3600)),
+            "event.outcome": lambda: self.fake.random_element(elements=("success", "failure", "unknown")),
+            "event.sequence": lambda: str(self.fake.random_int(min=1, max=999999)),
+            "event.start": lambda: str(int(time.time()) - self.fake.random_int(min=0, max=3600)),
+            "event.reason": lambda: self.fake.random_element(elements=("policy-deny", "timeout", "aged-out", "tcp-rst-from-client")),
             
             # Timestamp fields
             "@timestamp.date": lambda: datetime.now().strftime('%Y-%m-%d'),
             "@timestamp.time": lambda: datetime.now().strftime('%H:%M:%S'),
+            "@timestamp": lambda: datetime.now().isoformat(),
+            "@timestamp.high_res": lambda: str(int(time.time() * 1000000)),
             
             # User and authentication
             "source.user.id": lambda: str(uuid.uuid4()),
             "destination.user.id": lambda: str(uuid.uuid4()),
+            "source.user.name": lambda: self.fake.user_name(),
+            "destination.user.name": lambda: self.fake.user_name(),
+            "user.name": lambda: self.fake.user_name(),
+            "user.id": lambda: str(uuid.uuid4()),
+            "user.group.name": lambda: self.fake.random_element(elements=("administrators", "users", "guests", "domain_users")),
             
             # Geographic info
             "source.geo.country_name": lambda: self.fake.country(),
@@ -59,9 +79,15 @@ class LogGenerator:
             # Service and application
             "service.id": lambda: str(self.fake.random_int(min=1, max=65535)),
             "service.name": lambda: self.fake.random_element(elements=("HTTP.BROWSER_Firefox", "HTTP.BROWSER_Chrome", "SSH.CLIENT", "FTP.CLIENT")),
+            "service.type": lambda: self.fake.random_element(elements=("web", "database", "messaging", "file_transfer")),
             
             # Host information
             "host.os.name": lambda: self.fake.random_element(elements=("Ubuntu", "Windows 10", "CentOS", "macOS", "Debian")),
+            "host.os.family": lambda: self.fake.random_element(elements=("linux", "windows", "macos", "unix")),
+            "host.os.version": lambda: self.fake.random_element(elements=("20.04", "10.0.19041", "7.9", "11.6", "10")),
+            "host.id": lambda: str(uuid.uuid4()),
+            "host.name": lambda: self.fake.hostname(),
+            "host.hostname": lambda: self.fake.hostname(),
             
             # Traffic metrics
             "source.bytes": lambda: str(self.fake.random_int(min=64, max=1000000)),
@@ -72,6 +98,54 @@ class LogGenerator:
             # Rules and policies
             "rule.id": lambda: str(self.fake.random_int(min=1, max=999)),
             "rule.uuid": lambda: str(uuid.uuid4()),
+            "rule.name": lambda: self.fake.random_element(elements=("allow-web", "deny-malware", "block-untrusted", "permit-ssh")),
+            
+            # DNS specific fields
+            "dns.id": lambda: str(self.fake.random_int(min=1, max=65535)),
+            "dns.question.name": lambda: self.fake.domain_name(),
+            "dns.question.type": lambda: self.fake.random_element(elements=("A", "AAAA", "CNAME", "MX", "TXT", "PTR")),
+            "dns.resolved_ip": self.fake.ipv4,
+            
+            # URL and web related fields
+            "url.domain": lambda: self.fake.domain_name(),
+            "url.path": lambda: self.fake.uri_path(),
+            "url.original": lambda: self.fake.url(),
+            "url.category": lambda: self.fake.random_element(elements=("business-and-economy", "computer-and-internet-info", "web-advertisements")),
+            "destination.domain": lambda: self.fake.domain_name(),
+            
+            # File related fields
+            "file.name": lambda: self.fake.file_name(),
+            "file.hash.sha256": lambda: self.fake.sha256(),
+            
+            # Threat related fields
+            "threat.technique.name": lambda: self.fake.random_element(elements=("SQL Injection", "Cross-Site Scripting", "Buffer Overflow", "Command Injection")),
+            "threat.technique.id": lambda: str(self.fake.random_int(min=1000, max=9999)),
+            "threat.software.name": lambda: self.fake.random_element(elements=("Trojan.Generic", "W32.Malware", "Adware.Generic", "Virus.Boot")),
+            "threat.software.id": lambda: str(self.fake.random_int(min=1000, max=9999)),
+            "threat.indicator.confidence": lambda: str(self.fake.random_int(min=1, max=100)),
+            
+            # Observer related fields
+            "observer.name": lambda: self.fake.hostname(),
+            "observer.ingress.interface.name": lambda: self.fake.random_element(elements=("eth0", "port1", "ge-0/0/0", "TenGigE0/0/0")),
+            "observer.egress.interface.name": lambda: self.fake.random_element(elements=("eth1", "port2", "ge-0/0/1", "TenGigE0/0/1")),
+            
+            # Log related fields
+            "log.logger": lambda: self.fake.random_element(elements=("traffic", "threat", "url", "data")),
+            
+            # Organization and AS fields
+            "organization.name": lambda: self.fake.company(),
+            "source.as.organization.name": lambda: self.fake.company(),
+            "destination.as.organization.name": lambda: self.fake.company(),
+            
+            # Client and User Agent fields
+            "client.ip": self.fake.ipv4,
+            "user_agent.original": lambda: self.fake.user_agent(),
+            
+            # Container and Kubernetes fields
+            "container.id": lambda: str(uuid.uuid4()),
+            "orchestrator.namespace": lambda: self.fake.random_element(elements=("default", "kube-system", "production", "staging")),
+            "orchestrator.cluster.name": lambda: self.fake.random_element(elements=("prod-cluster", "dev-cluster", "test-cluster")),
+            "kubernetes.pod.name": lambda: f"pod-{self.fake.random_string(length=8)}",
             
             # Legacy placeholders for backward compatibility
             "srcip": self.fake.ipv4,

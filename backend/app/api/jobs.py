@@ -3,23 +3,30 @@ API router for job management endpoints.
 """
 from typing import List
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from core.db.session import get_db
-from schemas.job import JobCreate, JobRead, JobUpdate
+from fastapi import APIRouter, HTTPException, status
+from core.custom_api_route import HandleResponseRoute
+from core.dependencies.db import DBSession
+from schemas.job import JobCreate, JobRead, JobUpdate, JobOut
 from services import job_service
+from core.dependencies.aaa import require_permissions
+from schemas.account import Permissions
+from core.custom_page import Page
+from fastapi_pagination.ext.sqlalchemy import paginate
+from models.job import Job
+from sqlalchemy import select
 
 
 router = APIRouter(
-    prefix="/api/v1/jobs",
+    route_class=HandleResponseRoute,
     tags=["jobs"]
 )
 
 
-@router.post("/", response_model=JobRead, status_code=status.HTTP_201_CREATED)
-def create_job(
+@router.post("/create", response_model=JobRead, status_code=status.HTTP_201_CREATED)
+@require_permissions(Permissions.admin)
+async def create_job(
     job_data: JobCreate,
-    db: Session = Depends(get_db)
+    db: DBSession
 ) -> JobRead:
     """
     Create a new log sending job.
@@ -31,35 +38,32 @@ def create_job(
     Returns:
         JobRead: Created job data
     """
-    job = job_service.create_job(db, job_data)
-    return JobRead.model_validate(job)
+    return await job_service.create_job(db, job_data)
 
 
-@router.get("/", response_model=List[JobRead])
-def get_jobs(
-    skip: int = 0,
-    limit: int = 100,
-    db: Session = Depends(get_db)
+@router.get("/list", response_model=Page[JobOut])
+@require_permissions(Permissions.admin)
+async def get_jobs(
+    db: DBSession,
 ) -> List[JobRead]:
     """
     Get a list of all jobs with pagination.
     
     Args:
-        skip: Number of records to skip
-        limit: Maximum number of records to return
         db: Database session
         
     Returns:
         List[JobRead]: List of jobs
     """
-    jobs = job_service.get_jobs(db, skip=skip, limit=limit)
-    return [JobRead.model_validate(job) for job in jobs]
+    query = select(Job)
+    return await paginate(db, query)
 
 
 @router.get("/{job_id}", response_model=JobRead)
-def get_job(
-    job_id: UUID,
-    db: Session = Depends(get_db)
+@require_permissions(Permissions.admin)
+async def get_job(
+    job_id: str,
+    db: DBSession
 ) -> JobRead:
     """
     Get a specific job by ID.
@@ -84,48 +88,49 @@ def get_job(
 
 
 @router.post("/{job_id}/start", response_model=JobRead)
-def start_job(
-    job_id: UUID,
-    db: Session = Depends(get_db)
+@require_permissions(Permissions.admin)
+async def start_job(
+    job_id: str,
+    db: DBSession
 ) -> JobRead:
     """
     Start a job (change status to RUNNING and begin sending logs).
     
     Args:
-        job_id: Job UUID
+        job_id: Job str
         db: Database session
         
     Returns:
         JobRead: Updated job data
     """
-    job = job_service.start_job(db, job_id)
-    return JobRead.model_validate(job)
-
+    job = await job_service.start_job(db, job_id)
+    return job
 
 @router.post("/{job_id}/stop", response_model=JobRead)
-def stop_job(
-    job_id: UUID,
-    db: Session = Depends(get_db)
+@require_permissions(Permissions.admin)
+async def stop_job(
+    job_id: str,
+    db: DBSession
 ) -> JobRead:
     """
     Stop a job (change status to STOPPED).
     
     Args:
-        job_id: Job UUID
+        job_id: Job str
         db: Database session
         
     Returns:
         JobRead: Updated job data
     """
-    job = job_service.stop_job(db, job_id)
-    return JobRead.model_validate(job)
+    return await job_service.stop_job(db, job_id)
 
 
 @router.put("/{job_id}", response_model=JobRead)
-def update_job(
-    job_id: UUID,
+@require_permissions(Permissions.admin)
+async def update_job(
+    job_id: str,
     job_data: JobUpdate,
-    db: Session = Depends(get_db)
+    db: DBSession
 ) -> JobRead:
     """
     Update a job.
@@ -138,14 +143,14 @@ def update_job(
     Returns:
         JobRead: Updated job data
     """
-    job = job_service.update_job(db, job_id, job_data)
-    return JobRead.model_validate(job)
+    return await job_service.update_job(db, job_id, job_data)
 
 
-@router.delete("/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_job(
-    job_id: UUID,
-    db: Session = Depends(get_db)
+@router.delete("/{job_id}")
+@require_permissions(Permissions.admin)
+async def delete_job(
+    job_id: str,
+    db: DBSession
 ) -> None:
     """
     Delete a job.
@@ -157,9 +162,10 @@ def delete_job(
     Raises:
         HTTPException: If job not found
     """
-    deleted = job_service.delete_job(db, job_id)
+    deleted = await job_service.delete_job(db, job_id)
     if not deleted:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Job with id {job_id} not found"
         )
+    return None

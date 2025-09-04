@@ -51,12 +51,14 @@ class Settings(BaseSettings):
     
     # Database settings
     APP_DB_URI : str
+    DB_SSL_ENABLED: Optional[bool] = False
     
     # Redis settings
     REDIS_URI: str
     
     # Application settings
     debug: bool = os.getenv("DEBUG", "false").lower() == "true"
+    app_title: str = "Log Simulator"
     
     model_config = SettingsConfigDict(
         env_file=".env", extra="allow", env_nested_delimiter="__"

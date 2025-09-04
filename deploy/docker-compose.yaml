@@ -61,7 +61,7 @@ services:
     env_file:
       - .env
     volumes:
-      - ../backend/:/usr/src/
+      - ../backend/app/:/usr/src/
     command: ["python", "worker.py"]
     networks:
       - log-simulator

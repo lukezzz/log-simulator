@@ -4,7 +4,7 @@ Pydantic schemas for Job API endpoints.
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
-from pydantic import BaseModel, Field
+from pydantic import AliasPath, BaseModel, ConfigDict, Field
 from models.job import ProtocolEnum, JobStatusEnum
 
 
@@ -134,3 +134,11 @@ class JobStatusUpdate(BaseModel):
         ...,
         description="New job status"
     )
+
+
+class JobOut(JobRead):
+    """Schema for job output data."""
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+    template_name: str = Field(validation_alias=AliasPath("template", "name"))

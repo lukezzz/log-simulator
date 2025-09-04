@@ -97,10 +97,3 @@ class Job(BaseModel):
             f"protocol={self.protocol}, destination={self.destination_host}:{self.destination_port}, "
             f"status={self.status})>"
         )
-    
-    def __repr__(self) -> str:
-        return (
-            f"<Job(id={self.id}, template_id={self.template_id}, "
-            f"protocol={self.protocol}, destination={self.destination_host}:{self.destination_port}, "
-            f"status={self.status})>"
-        )

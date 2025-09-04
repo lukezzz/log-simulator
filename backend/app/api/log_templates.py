@@ -1,25 +1,32 @@
 """
 API router for template management endpoints.
 """
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.orm import Session
-from core.db.session import get_db
 from schemas.log_template import LogTemplateCreate, LogTemplateRead, LogTemplateUpdate
 from services import log_template_service
-
+from core.custom_api_route import HandleResponseRoute
+from schemas.account import Permissions
+from core.dependencies.db import DBSession
+from core.dependencies.aaa import require_permissions
+from core.custom_page import Page
+from fastapi_pagination.ext.sqlalchemy import paginate
+from sqlalchemy import select
+from models.log_template import LogTemplate
 
 router = APIRouter(
-    prefix="/api/v1/templates",
+    route_class=HandleResponseRoute,
     tags=["templates"]
 )
 
 
 @router.post("/", response_model=LogTemplateRead, status_code=status.HTTP_201_CREATED)
-def create_template(
+@require_permissions(Permissions.admin)
+async def create_template(
     template_data: LogTemplateCreate,
-    db: Session = Depends(get_db)
+    db: DBSession
 ) -> LogTemplateRead:
     """
     Create a new log template.
@@ -35,31 +42,41 @@ def create_template(
     return LogTemplateRead.model_validate(template)
 
 
-@router.get("/", response_model=List[LogTemplateRead])
-def get_templates(
-    skip: int = 0,
-    limit: int = 100,
-    db: Session = Depends(get_db)
-) -> List[LogTemplateRead]:
+@router.get("/list", response_model=Page[LogTemplateRead])
+async def get_templates(
+    db: DBSession,
+    name: Optional[str] = None,
+    device_type: Optional[str] = None,
+    content_format: Optional[str] = None,
+) -> Page[LogTemplateRead]:
     """
-    Get a list of all templates with pagination.
+    Get a list of all templates with pagination and optional filters.
     
     Args:
-        skip: Number of records to skip
-        limit: Maximum number of records to return
         db: Database session
+        name: Optional filter by template name
+        device_type: Optional filter by device type
+        content_format: Optional filter by content format
         
     Returns:
-        List[LogTemplateRead]: List of templates
+        Page[LogTemplateRead]: Paginated list of templates
     """
-    templates = log_template_service.get_templates(db, skip=skip, limit=limit)
-    return [LogTemplateRead.model_validate(template) for template in templates]
+    query = select(LogTemplate)
+    
+    if name and name != "undefined":
+        query = query.filter(LogTemplate.name.ilike(f"%{name}%"))
+    if device_type:
+        query = query.filter(LogTemplate.device_type == device_type)
+    if content_format:
+        query = query.filter(LogTemplate.content_format == content_format)
+    
+    return await paginate(db, query)
 
 
 @router.get("/{template_id}", response_model=LogTemplateRead)
-def get_template(
+async def get_template(
     template_id: UUID,
-    db: Session = Depends(get_db)
+    db: DBSession
 ) -> LogTemplateRead:
     """
     Get a single template by ID.
@@ -84,10 +101,10 @@ def get_template(
 
 
 @router.put("/{template_id}", response_model=LogTemplateRead)
-def update_template(
+async def update_template(
     template_id: UUID,
     template_data: LogTemplateUpdate,
-    db: Session = Depends(get_db)
+    db: DBSession
 ) -> LogTemplateRead:
     """
     Update an existing template.
@@ -105,9 +122,9 @@ def update_template(
 
 
 @router.delete("/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_template(
+async def delete_template(
     template_id: UUID,
-    db: Session = Depends(get_db)
+    db: DBSession
 ) -> None:
     """
     Delete a template.
@@ -120,9 +137,9 @@ def delete_template(
 
 
 @router.post("/{template_id}/clone", response_model=LogTemplateRead, status_code=status.HTTP_201_CREATED)
-def clone_template(
+async def clone_template(
     template_id: UUID,
-    db: Session = Depends(get_db)
+    db: DBSession
 ) -> LogTemplateRead:
     """
     Clone an existing template.

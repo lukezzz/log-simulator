@@ -10,6 +10,7 @@ from schemas.account import Permissions
 from core.security import verify_password
 from models.aaa import Account
 from core.auth_jwt import AuthJWT
+from core.dependencies.db import DBSession
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
@@ -25,7 +26,7 @@ def authenticate_user(db: Session, username: str, password: str):
 
 async def get_current_user(
     token: Annotated[str, Depends(oauth2_scheme)],
-    db: Session,
+    db: DBSession,
 ) -> Account:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -55,6 +56,7 @@ async def get_current_active_user(
 
 
 def require_permissions(*required_permissions: list[Permissions]):
+    @depends
     def dependency(user: Account = Depends(get_current_active_user)):
         user_permissions = [i.name for i in user.role.permissions]
         for permission in required_permissions:
@@ -66,7 +68,7 @@ def require_permissions(*required_permissions: list[Permissions]):
                 )
         return user
 
-    return depends(Depends(dependency))
+    return dependency
 
 
 async def is_admin(

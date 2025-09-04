@@ -17,7 +17,7 @@ from core.settings import cfg
 redis_client = redis.from_url(cfg.REDIS_URI, decode_responses=True)
 
 
-def create_job(db: Session, job_data: JobCreate) -> Job:
+async def create_job(db: Session, job_data: JobCreate) -> Job:
     """
     Create a new job.
     
@@ -32,8 +32,9 @@ def create_job(db: Session, job_data: JobCreate) -> Job:
         HTTPException: If template doesn't exist
     """
     # Validate that the template exists
-    statement = select(LogTemplate).where(LogTemplate.id == job_data.template_id)
-    result = db.execute(statement)
+    template_id = str(job_data.template_id)
+    statement = select(LogTemplate).where(LogTemplate.id == template_id)
+    result = await db.execute(statement)
     template = result.scalar_one_or_none()
     if not template:
         raise HTTPException(
@@ -50,7 +51,7 @@ def create_job(db: Session, job_data: JobCreate) -> Job:
     
     # Create the job
     db_job = Job(
-        template_id=job_data.template_id,
+        template_id=template_id,
         protocol=job_data.protocol,
         destination_host=job_data.destination_host,
         destination_port=job_data.destination_port,
@@ -62,9 +63,9 @@ def create_job(db: Session, job_data: JobCreate) -> Job:
     )
     
     db.add(db_job)
-    db.commit()
-    db.refresh(db_job)
-    
+    await db.commit()
+    await db.refresh(db_job)
+
     return db_job
 
 
@@ -84,8 +85,7 @@ def get_jobs(db: Session, skip: int = 0, limit: int = 100) -> List[Job]:
     result = db.execute(statement)
     return result.scalars().all()
 
-
-def get_job_by_id(db: Session, job_id: UUID) -> Optional[Job]:
+async def get_job_by_id(db: Session, job_id: UUID) -> Optional[Job]:
     """
     Get a job by its ID.
     
@@ -97,11 +97,11 @@ def get_job_by_id(db: Session, job_id: UUID) -> Optional[Job]:
         Optional[Job]: Job instance if found, None otherwise
     """
     statement = select(Job).where(Job.id == job_id)
-    result = db.execute(statement)
+    result = await db.execute(statement)
     return result.scalar_one_or_none()
 
 
-def start_job(db: Session, job_id: UUID) -> Job:
+async def start_job(db: Session, job_id: UUID) -> Job:
     """
     Start a job by sending a command to the worker.
     
@@ -115,7 +115,7 @@ def start_job(db: Session, job_id: UUID) -> Job:
     Raises:
         HTTPException: If job not found or cannot be started
     """
-    job = get_job_by_id(db, job_id)
+    job = await get_job_by_id(db, job_id)
     if not job:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -149,13 +149,13 @@ def start_job(db: Session, job_id: UUID) -> Job:
     return job
 
 
-def stop_job(db: Session, job_id: UUID) -> Job:
+async def stop_job(db: Session, job_id: str) -> Job:
     """
     Stop a job by sending a command to the worker.
     
     Args:
         db: Database session
-        job_id: Job UUID
+        job_id: Job str
         
     Returns:
         Job: Updated job instance
@@ -163,7 +163,7 @@ def stop_job(db: Session, job_id: UUID) -> Job:
     Raises:
         HTTPException: If job not found or cannot be stopped
     """
-    job = get_job_by_id(db, job_id)
+    job = await get_job_by_id(db, job_id)
     if not job:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -197,7 +197,7 @@ def stop_job(db: Session, job_id: UUID) -> Job:
     return job
 
 
-def update_job(db: Session, job_id: UUID, job_data: JobUpdate) -> Job:
+async def update_job(db: Session, job_id: UUID, job_data: JobUpdate) -> Job:
     """
     Update a job.
     
@@ -212,7 +212,7 @@ def update_job(db: Session, job_id: UUID, job_data: JobUpdate) -> Job:
     Raises:
         HTTPException: If job not found or update is invalid
     """
-    job = get_job_by_id(db, job_id)
+    job = await get_job_by_id(db, job_id)
     if not job:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -234,13 +234,13 @@ def update_job(db: Session, job_id: UUID, job_data: JobUpdate) -> Job:
         
         setattr(job, field, value)
     
-    db.commit()
-    db.refresh(job)
-    
+    await db.commit()
+    await db.refresh(job)
+
     return job
 
 
-def delete_job(db: Session, job_id: UUID) -> bool:
+async def delete_job(db: Session, job_id: UUID) -> bool:
     """
     Delete a job.
     
@@ -251,12 +251,12 @@ def delete_job(db: Session, job_id: UUID) -> bool:
     Returns:
         bool: True if job was deleted, False if not found
     """
-    job = get_job_by_id(db, job_id)
+    job = await get_job_by_id(db, job_id)
     if not job:
         return False
     
-    db.delete(job)
-    db.commit()
+    await db.delete(job)
+    await db.commit()
     
     return True
 

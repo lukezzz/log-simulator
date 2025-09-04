@@ -9,12 +9,11 @@ import asyncio
 import socket
 import logging
 from typing import Dict, Optional
-from uuid import UUID
 import redis.asyncio as redis
-from sqlalchemy.orm import Session
 
-from core.db.session import SessionLocal
-from core.settings import settings
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy import select
+from core.settings import cfg
 from models.job import Job, JobStatusEnum, ProtocolEnum
 from models.log_template import LogTemplate
 from services.log_generator import LogGenerator
@@ -36,6 +35,8 @@ redis_client: Optional[redis.Redis] = None
 # Log generator instance
 log_generator = LogGenerator()
 
+# db
+engine = create_async_engine(cfg.APP_DB_URI, echo=True)
 
 async def send_log_loop(job_id: str) -> None:
     """
@@ -48,141 +49,142 @@ async def send_log_loop(job_id: str) -> None:
         job_id: The UUID of the job to process
     """
     logger.info(f"Starting log sending loop for job {job_id}")
-    
-    try:
-        # Get job details from database and extract all needed data
-        db = SessionLocal()
-        job_config = None
-        template_content = None
-        
+    async with AsyncSession(engine) as session:
         try:
-            logger.debug(f"Fetching job {job_id} from database")
-            job = db.query(Job).filter(Job.id == UUID(job_id)).first()
-            if not job:
-                logger.error(f"Job {job_id} not found in database")
-                return
+            # Get job details from database and extract all needed data
+            job_config = None
+            template_content = None
             
-            # Get the template
-            logger.debug(f"Fetching template {job.template_id} for job {job_id}")
-            template = db.query(LogTemplate).filter(LogTemplate.id == job.template_id).first()
-            if not template:
-                logger.error(f"Template {job.template_id} not found for job {job_id}")
-                await _update_job_status(job_id, JobStatusEnum.ERROR)
-                return
-            
-            # Extract all data we need before closing the session
-            job_config = {
-                'destination_host': job.destination_host,
-                'destination_port': job.destination_port,
-                'protocol': job.protocol,
-                'start_time': job.start_time,
-                'end_time': job.end_time,
-                'send_count': job.send_count,
-                'send_interval_ms': job.send_interval_ms or 1000
-            }
-            template_content = template.content_format
-            
-            # Update job status to RUNNING
-            job.status = JobStatusEnum.RUNNING
-            db.commit()
-            
-            logger.info(f"Job {job_id} configured: {job_config['protocol']} to {job_config['destination_host']}:{job_config['destination_port']}")
-            logger.info(f"Scheduling config - start_time: {job_config['start_time']}, end_time: {job_config['end_time']}, send_count: {job_config['send_count']}, interval: {job_config['send_interval_ms']}ms")
-            
-        except Exception as e:
-            logger.error(f"Database error while setting up job {job_id}: {e}")
-            await _update_job_status(job_id, JobStatusEnum.ERROR)
-            return
-        finally:
-            db.close()
-        
-        # Validate we have all required data
-        if not job_config or not template_content:
-            logger.error(f"Failed to extract job configuration for {job_id}")
-            await _update_job_status(job_id, JobStatusEnum.ERROR)
-            return
-        
-        # Import datetime for time comparisons
-        from datetime import datetime, timezone
-        
-        # Helper function to ensure timezone-aware datetime
-        def ensure_timezone_aware(dt):
-            if dt is None:
-                return None
-            if dt.tzinfo is None:
-                # Assume naive datetime is in UTC
-                return dt.replace(tzinfo=timezone.utc)
-            return dt
-        
-        # Ensure start_time and end_time are timezone-aware
-        job_config['start_time'] = ensure_timezone_aware(job_config['start_time'])
-        job_config['end_time'] = ensure_timezone_aware(job_config['end_time'])
-        
-        # Wait for start_time if set and in the future
-        if job_config['start_time']:
-            now = datetime.now(timezone.utc)
-            if job_config['start_time'] > now:
-                wait_seconds = (job_config['start_time'] - now).total_seconds()
-                logger.info(f"Job {job_id} waiting {wait_seconds:.1f}s until start time {job_config['start_time']}")
-                await asyncio.sleep(wait_seconds)
-        
-        # Initialize counters
-        logs_sent = 0
-        interval_seconds = job_config['send_interval_ms'] / 1000.0
-        
-        # Main sending loop
-        while True:
             try:
-                # Check if we should stop due to end_time
-                if job_config['end_time']:
-                    now = datetime.now(timezone.utc)
-                    if now >= job_config['end_time']:
-                        logger.info(f"Job {job_id} reached end_time {job_config['end_time']}, stopping")
-                        break
+                logger.debug(f"Fetching job {job_id} from database")
+                stmt = select(Job).where(Job.id == job_id)
+                job_res = await session.execute(stmt)
+                job = job_res.scalar_one_or_none()
+                if not job:
+                    logger.error(f"Job {job_id} not found in database")
+                    return
                 
-                # Check if we should stop due to send_count limit
-                if job_config['send_count'] and logs_sent >= job_config['send_count']:
-                    logger.info(f"Job {job_id} reached send_count limit of {job_config['send_count']}, stopping")
-                    break
+                # Get the template
+                logger.debug(f"Fetching template {job.template_id} for job {job_id}")
+                stmt = select(LogTemplate).where(LogTemplate.id == job.template_id)
+                template_res = await session.execute(stmt)
+                template = template_res.scalar_one_or_none()
+                if not template:
+                    logger.error(f"Template {job.template_id} not found for job {job_id}")
+                    await _update_job_status(job_id, JobStatusEnum.ERROR)
+                    return
                 
-                # Generate log content from template
-                log_content = log_generator.generate_log(template_content)
+                # Extract all data we need before closing the session
+                job_config = {
+                    'destination_host': job.destination_host,
+                    'destination_port': job.destination_port,
+                    'protocol': job.protocol,
+                    'start_time': job.start_time,
+                    'end_time': job.end_time,
+                    'send_count': job.send_count,
+                    'send_interval_ms': job.send_interval_ms or 1000
+                }
+                template_content = template.content_format
                 
-                # Send the log
-                await _send_log_message(
-                    log_content,
-                    job_config['destination_host'],
-                    job_config['destination_port'],
-                    job_config['protocol']
-                )
+                # Update job status to RUNNING
+                job.status = JobStatusEnum.RUNNING
+                await session.commit()
                 
-                logs_sent += 1
-                logger.debug(f"Sent log {logs_sent} for job {job_id}: {log_content[:100]}...")
+                logger.info(f"Job {job_id} configured: {job_config['protocol']} to {job_config['destination_host']}:{job_config['destination_port']}")
+                logger.info(f"Scheduling config - start_time: {job_config['start_time']}, end_time: {job_config['end_time']}, send_count: {job_config['send_count']}, interval: {job_config['send_interval_ms']}ms")
                 
-                # Sleep for the configured interval
-                await asyncio.sleep(interval_seconds)
-                
-            except asyncio.CancelledError:
-                logger.info(f"Job {job_id} was cancelled")
-                break
             except Exception as e:
-                logger.error(f"Error in job {job_id} loop: {e}")
-                logger.debug(f"Full exception details: {type(e).__name__}: {str(e)}")
+                logger.error(f"Database error while setting up job {job_id}: {e}")
                 await _update_job_status(job_id, JobStatusEnum.ERROR)
-                break
-        
-        # Job completed naturally (reached end_time or send_count)
-        logger.info(f"Job {job_id} completed naturally after sending {logs_sent} logs")
-        await _update_job_status(job_id, JobStatusEnum.STOPPED)
-                
-    except Exception as e:
-        logger.error(f"Fatal error in job {job_id}: {e}")
-        await _update_job_status(job_id, JobStatusEnum.ERROR)
-    finally:
-        # Clean up the job from active jobs
-        if job_id in active_jobs:
-            del active_jobs[job_id]
-        logger.info(f"Log sending loop ended for job {job_id}")
+                return
+
+            # Validate we have all required data
+            if not job_config or not template_content:
+                logger.error(f"Failed to extract job configuration for {job_id}")
+                await _update_job_status(job_id, JobStatusEnum.ERROR)
+                return
+            
+            # Import datetime for time comparisons
+            from datetime import datetime, timezone
+            
+            # Helper function to ensure timezone-aware datetime
+            def ensure_timezone_aware(dt):
+                if dt is None:
+                    return None
+                if dt.tzinfo is None:
+                    # Assume naive datetime is in UTC
+                    return dt.replace(tzinfo=timezone.utc)
+                return dt
+            
+            # Ensure start_time and end_time are timezone-aware
+            job_config['start_time'] = ensure_timezone_aware(job_config['start_time'])
+            job_config['end_time'] = ensure_timezone_aware(job_config['end_time'])
+            
+            # Wait for start_time if set and in the future
+            if job_config['start_time']:
+                now = datetime.now(timezone.utc)
+                if job_config['start_time'] > now:
+                    wait_seconds = (job_config['start_time'] - now).total_seconds()
+                    logger.info(f"Job {job_id} waiting {wait_seconds:.1f}s until start time {job_config['start_time']}")
+                    await asyncio.sleep(wait_seconds)
+            
+            # Initialize counters
+            logs_sent = 0
+            interval_seconds = job_config['send_interval_ms'] / 1000.0
+            
+            # Main sending loop
+            while True:
+                try:
+                    # Check if we should stop due to end_time
+                    if job_config['end_time']:
+                        now = datetime.now(timezone.utc)
+                        if now >= job_config['end_time']:
+                            logger.info(f"Job {job_id} reached end_time {job_config['end_time']}, stopping")
+                            break
+                    
+                    # Check if we should stop due to send_count limit
+                    if job_config['send_count'] and logs_sent >= job_config['send_count']:
+                        logger.info(f"Job {job_id} reached send_count limit of {job_config['send_count']}, stopping")
+                        break
+                    
+                    # Generate log content from template
+                    log_content = log_generator.generate_log(template_content)
+                    
+                    # Send the log
+                    await _send_log_message(
+                        log_content,
+                        job_config['destination_host'],
+                        job_config['destination_port'],
+                        job_config['protocol']
+                    )
+                    
+                    logs_sent += 1
+                    logger.debug(f"Sent log {logs_sent} for job {job_id}: {log_content[:100]}...")
+                    
+                    # Sleep for the configured interval
+                    await asyncio.sleep(interval_seconds)
+                    
+                except asyncio.CancelledError:
+                    logger.info(f"Job {job_id} was cancelled")
+                    break
+                except Exception as e:
+                    logger.error(f"Error in job {job_id} loop: {e}")
+                    logger.debug(f"Full exception details: {type(e).__name__}: {str(e)}")
+                    await _update_job_status(job_id, JobStatusEnum.ERROR)
+                    break
+            
+            # Job completed naturally (reached end_time or send_count)
+            logger.info(f"Job {job_id} completed naturally after sending {logs_sent} logs")
+            await _update_job_status(job_id, JobStatusEnum.STOPPED)
+                    
+        except Exception as e:
+            logger.error(f"Fatal error in job {job_id}: {e}")
+            await _update_job_status(job_id, JobStatusEnum.ERROR)
+        finally:
+            # Clean up the job from active jobs
+            if job_id in active_jobs:
+                del active_jobs[job_id]
+            logger.info(f"Log sending loop ended for job {job_id}")
 
 
 async def _send_log_message(message: str, host: str, port: int, protocol: ProtocolEnum) -> None:
@@ -261,21 +263,22 @@ async def _update_job_status(job_id: str, status: JobStatusEnum) -> None:
         status: New status to set
     """
     logger.debug(f"Updating job {job_id} status to {status}")
-    db = SessionLocal()
-    try:
-        job = db.query(Job).filter(Job.id == UUID(job_id)).first()
-        if job:
-            job.status = status
-            db.commit()
-            logger.info(f"Updated job {job_id} status to {status}")
-        else:
-            logger.warning(f"Job {job_id} not found when trying to update status to {status}")
-    except Exception as e:
-        logger.error(f"Failed to update job {job_id} status: {type(e).__name__}: {e}")
-        db.rollback()
-        raise
-    finally:
-        db.close()
+    async with AsyncSession(engine) as session:
+        try:
+            stmt = select(Job).where(Job.id == job_id)
+            job_res = await session.execute(stmt)
+            job = job_res.scalar_one_or_none()
+            logger.debug(f"Found job {job}, {job.__repr__() if job else 'None'}")   
+            if job:
+                job.status = status
+                await session.commit()
+                logger.info(f"Updated job {job_id} status to {status}")
+            else:
+                logger.warning(f"Job {job_id} not found when trying to update status to {status}")
+        except Exception as e:
+            logger.error(f"Failed to update job {job_id} status: {type(e).__name__}: {e}")
+            await session.rollback()
+            raise
 
 
 async def handle_job_command(message: str) -> None:
@@ -364,7 +367,7 @@ async def main():
     logger.info("Starting log simulator worker...")
     
     # Connect to Redis
-    redis_client = redis.from_url(settings.REDIS_URI, decode_responses=True)
+    redis_client = redis.from_url(cfg.REDIS_URI, decode_responses=True)
     
     try:
         # Test Redis connection
